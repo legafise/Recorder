@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <title>PomanRecorder</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<div class="app" id="app">
+  <!-- ============ Верхняя панель ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 40 40">
+          <defs>
+            <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#22d3ee"/><stop offset=".55" stop-color="#818cf8"/><stop offset="1" stop-color="#f472b6"/>
+            </linearGradient>
+          </defs>
+          <rect width="40" height="40" rx="12" fill="url(#lg)"/>
+          <g stroke="#fff" stroke-width="2.6" stroke-linecap="round" class="logo-bars">
+            <line x1="10" y1="17" x2="10" y2="23"/><line x1="15" y1="12" x2="15" y2="28"/>
+            <line x1="20" y1="9" x2="20" y2="31"/><line x1="25" y1="14" x2="25" y2="26"/>
+            <line x1="30" y1="18" x2="30" y2="22"/>
+          </g>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">PomanRecorder</div>
+        <div class="brand-sub">audio studio</div>
+      </div>
+    </div>
+
+    <div class="rec-badge" id="recBadge"><span class="dot"></span><span>REC</span><span class="mono" id="recBadgeTime">00:00</span></div>
+
+    <div class="top-actions">
+      <div class="seg seg-icons" id="themeSeg" title="Тема оформления">
+        <span class="seg-thumb"></span>
+        <button data-v="auto" title="Как в системе"></button>
+        <button data-v="light" title="Светлая"></button>
+        <button data-v="dark" title="Тёмная"></button>
+      </div>
+      <button class="icon-btn" id="btnKeys" title="Горячие клавиши"></button>
+    </div>
+  </header>
+
+  <!-- ============ Библиотека ============ -->
+  <aside class="panel library">
+    <div class="panel-head">
+      <div class="panel-title"><span class="ico" data-icon="library"></span>Библиотека <span class="count" id="libCount">0</span></div>
+      <button class="icon-btn sm" id="btnOpenFolder" title="Открыть папку с записями"></button>
+    </div>
+    <label class="search">
+      <span class="ico" data-icon="search"></span>
+      <input id="search" placeholder="Поиск записей…" spellcheck="false" autocomplete="off">
+      <kbd>Ctrl L</kbd>
+    </label>
+    <div class="sort" id="sort">
+      <button data-k="date">Дата</button>
+      <button data-k="name">Имя</button>
+      <button data-k="duration">Длина</button>
+      <button data-k="size">Размер</button>
+    </div>
+    <div class="list" id="list"></div>
+    <button class="folder-btn" id="btnFolder" title="Сменить папку для записей">
+      <span class="ico" data-icon="folder"></span>
+      <span class="folder-path" id="folderPath">—</span>
+      <span class="folder-change">Сменить</span>
+    </button>
+  </aside>
+
+  <!-- ============ Дека: волна и транспорт ============ -->
+  <main class="panel deck">
+    <div class="deck-head">
+      <div class="track">
+        <div class="track-title" id="trackTitle">Нет выбранной записи</div>
+        <div class="track-meta" id="trackMeta"></div>
+      </div>
+      <div class="timecode" id="timecode">
+        <span class="tc-pos" id="tcPos">00:00<small>.0</small></span>
+        <span class="tc-dur" id="tcDur">/ 00:00</span>
+      </div>
+    </div>
+
+    <div class="screen wave-screen" id="waveScreen">
+      <canvas id="wave"></canvas>
+      <div class="screen-label" id="waveLabel"></div>
+      <div class="hover-time" id="hoverTime"></div>
+      <div class="empty" id="waveEmpty">
+        <div class="empty-art">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="empty-title">Выберите запись или нажмите REC</div>
+        <div class="empty-sub">Пробел — проиграть · Ctrl+R — запись</div>
+      </div>
+    </div>
+
+    <div class="transport">
+      <div class="transport-main">
+        <button class="t-btn" id="btnBack" title="Назад 5 с  (←)"></button>
+        <button class="play-btn" id="btnPlay" title="Проиграть / пауза  (Пробел)">
+          <span class="ico play-ico" data-icon="play"></span>
+          <span class="ico pause-ico" data-icon="pause"></span>
+        </button>
+        <button class="t-btn" id="btnStop" title="Стоп"></button>
+        <button class="t-btn" id="btnFwd" title="Вперёд 5 с  (→)"></button>
+      </div>
+      <div class="actions">
+        <button class="act" id="btnReveal" title="Показать файл в Проводнике  (Ctrl+E)"><span class="ico" data-icon="folderOpen"></span><span>В папке</span></button>
+        <button class="act" id="btnCopy" title="Скопировать файл — вставьте его куда угодно через Ctrl+V  (Ctrl+C)"><span class="ico" data-icon="copy"></span><span>Копировать</span></button>
+        <button class="act act-fx" id="btnFx" title="Эффекты и фильтры  (Ctrl+F)"><span class="ico" data-icon="sliders"></span><span>Эффекты</span></button>
+        <span class="act-sep"></span>
+        <button class="act icon" id="btnRename" title="Переименовать  (F2)"><span class="ico" data-icon="pencil"></span></button>
+        <button class="act icon danger" id="btnDelete" title="Удалить в Корзину  (Delete)"><span class="ico" data-icon="trash"></span></button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ Консоль записи ============ -->
+  <section class="panel console">
+    <div class="console-controls">
+      <div class="field-label">Источник</div>
+      <div class="dropdown" id="micDrop">
+        <button class="dropdown-btn" id="micBtn">
+          <span class="mic-ico ico" data-icon="mic"></span>
+          <span class="dropdown-text" id="micName">—</span>
+          <span class="ico chev" data-icon="chevron"></span>
+        </button>
+        <div class="dropdown-menu" id="micMenu"></div>
+      </div>
+      <div class="console-row">
+        <div class="seg" id="chanSeg">
+          <span class="seg-thumb"></span>
+          <button data-v="1">Моно</button>
+          <button data-v="2">Стерео</button>
+        </div>
+        <button class="pill-btn" id="btnMonitor" title="Показать уровень микрофона без записи">
+          <span class="led"></span>Тест входа
+        </button>
+      </div>
+    </div>
+
+    <div class="console-rec">
+      <button class="rec-btn" id="btnRec" title="Начать / остановить запись  (Ctrl+R)">
+        <span class="rec-ring"></span>
+        <span class="rec-core"></span>
+      </button>
+      <div class="rec-side">
+        <div class="rec-time mono" id="recTime">00:00:00</div>
+        <div class="rec-state" id="recState">Готов к записи</div>
+        <button class="pill-btn" id="btnRecPause" disabled><span class="ico" data-icon="pause"></span>Пауза</button>
+      </div>
+    </div>
+
+    <div class="console-meters">
+      <div class="screen meter-screen">
+        <canvas id="vu"></canvas>
+      </div>
+      <div class="screen meter-screen spectrum-screen">
+        <canvas id="spectrum"></canvas>
+        <div class="screen-label">SPECTRUM</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="statusbar">
+    <span class="status" id="status">Готово</span>
+    <span class="status-right" id="statusRight">WAV · 16 бит</span>
+  </footer>
+</div>
+
+<!-- ============ Рэк эффектов ============ -->
+<div class="drawer-back" id="fxBack"></div>
+<aside class="drawer" id="fxDrawer">
+  <div class="drawer-head">
+    <div>
+      <div class="drawer-title"><span class="ico" data-icon="sliders"></span>Рэк эффектов</div>
+      <div class="drawer-sub" id="fxFile">—</div>
+    </div>
+    <button class="icon-btn" id="fxClose" title="Закрыть  (Esc)"></button>
+  </div>
+  <div class="chain" id="fxChain"></div>
+  <div class="fx-grid" id="fxGrid"></div>
+  <div class="drawer-foot">
+    <button class="btn ghost icon" id="fxReset" title="Сбросить все ручки к значениям по умолчанию"><span class="ico" data-icon="refresh"></span></button>
+    <button class="btn" id="fxPreview"><span class="ico" data-icon="headphones"></span>Прослушать</button>
+    <span class="grow"></span>
+    <button class="btn ghost danger" id="fxReplace" title="Перезаписать исходный файл (старая версия уйдёт в Корзину)">Перезаписать</button>
+    <button class="btn primary" id="fxSave"><span class="ico" data-icon="save"></span>Сохранить как новую</button>
+  </div>
+</aside>
+
+<!-- ============ Модальные окна, меню, уведомления ============ -->
+<div class="modal-back" id="modalBack">
+  <div class="modal" id="modal"></div>
+</div>
+<div class="ctx" id="ctx"></div>
+<div class="toasts" id="toasts"></div>
+<div class="busy" id="busy"><div class="spinner"></div><div id="busyText">Обработка…</div></div>
+
+<script src="app.js"></script>
+</body>
+</html>

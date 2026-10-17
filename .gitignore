@@ -1,0 +1,14 @@
+# Личные данные: записи и настройки
+Записи/
+settings.json
+*.wav.part
+
+# Результаты сборки (установщик в папке «Установщик» коммитим, чтобы им можно было поделиться)
+PomanRecorder.exe
+build/icon.ico
+build/*.bmp
+dist/
+
+# Python
+__pycache__/
+*.pyc
