@@ -44,7 +44,11 @@ def data_locations():
     Установленная программа — настройки в %APPDATA%\\PomanRecorder, записи в «Документы\\PomanRecorder».
     """
     if not FROZEN or (APP_DIR / "settings.json").exists():
-        return APP_DIR / "settings.json", APP_DIR / "Записи"
+        recordings = APP_DIR / "Recordings"
+        legacy = APP_DIR / "Записи"  # так папка называлась в первых версиях
+        if legacy.exists() and not recordings.exists():
+            recordings = legacy
+        return APP_DIR / "settings.json", recordings
     appdata = Path(os.environ.get("APPDATA") or Path.home()) / "PomanRecorder"
     return appdata / "settings.json", documents_dir() / "PomanRecorder"
 

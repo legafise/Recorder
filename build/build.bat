@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal
 rem Собирает из исходников:
 rem   PomanRecorder.exe                    — переносная версия (один файл, лежит в корне папки)
-rem   Установщик\PomanRecorder-Setup-1.0.exe    — установщик, который можно отправить другу
+rem   installer\PomanRecorder-Setup-1.0.exe     — установщик, который можно отправить другу
 cd /d "%~dp0.."
 set "ROOT=%CD%"
 set "VENV=%LOCALAPPDATA%\SimpleRecorder\venv"
@@ -45,7 +45,7 @@ if not exist "%ISCC%" (
 echo.
 echo Готово:
 echo   %ROOT%\PomanRecorder.exe
-echo   %ROOT%\Установщик\
+echo   %ROOT%\installer\
 pause
 exit /b 0
 

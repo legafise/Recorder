@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/legafise/Recorder/raw/main/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D1%89%D0%B8%D0%BA/PomanRecorder-Setup-1.0.exe"><b>⬇ Скачать установщик для Windows</b></a>
+  <a href="https://github.com/legafise/Recorder/raw/main/installer/PomanRecorder-Setup-1.0.exe"><b>⬇ Скачать установщик для Windows</b></a>
   &nbsp;·&nbsp;
-  <a href="ИНСТРУКЦИЯ.md">Инструкция</a>
+  <a href="GUIDE.md">Инструкция</a>
 </p>
 
 <picture>
@@ -52,7 +52,7 @@
 
 ## Установка
 
-1. Скачайте [`PomanRecorder-Setup-1.0.exe`](https://github.com/legafise/Recorder/raw/main/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D1%89%D0%B8%D0%BA/PomanRecorder-Setup-1.0.exe) (≈37 МБ) и запустите.
+1. Скачайте [`PomanRecorder-Setup-1.0.exe`](https://github.com/legafise/Recorder/raw/main/installer/PomanRecorder-Setup-1.0.exe) (≈37 МБ) и запустите.
 2. Нажмите «Далее» → «Далее». Права администратора не нужны.
 3. Готово: ярлык появится на рабочем столе и в меню «Пуск».
 
@@ -68,5 +68,5 @@
 | `recorder.py` | окно (pywebview) и связь интерфейса со звуком |
 | `audio_core.py` | запись, воспроизведение, эффекты, анализ (sounddevice, numpy, scipy) |
 | `ui/` | интерфейс на HTML, CSS и JavaScript |
-| `Запуск.bat` | запуск из исходников (нужен Python 3.10+) |
+| `run.bat` | запуск из исходников (нужен Python 3.10+) |
 | `build/build.bat` | сборка `PomanRecorder.exe` (PyInstaller) и установщика (Inno Setup: `winget install JRSoftware.InnoSetup`) |
