@@ -11,15 +11,22 @@ from ctypes import wintypes
 from datetime import datetime
 from pathlib import Path
 
-import webview
+try:
+    import webview
 
-import audio_core as core
+    import audio_core as core
+    STARTUP_ERROR = None
+except Exception:  # сломанная сборка, антивирус удалил файл и т.п. — покажем это в main()
+    STARTUP_ERROR = traceback.format_exc()
 
 FROZEN = getattr(sys, "frozen", False)
 APP_DIR = Path(sys.executable).resolve().parent if FROZEN else Path(__file__).resolve().parent
 # Файлы интерфейса: у .exe они лежат во внутренней папке сборки
 UI_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR)) / "ui"
 TITLE = "PomanRecorder"
+LOG_DIR = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "PomanRecorder"
+WEBVIEW2_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+UI_TIMEOUT = 30  # секунд на загрузку интерфейса, прежде чем сообщить о проблеме
 
 
 def documents_dir():
@@ -115,7 +122,12 @@ class Api:
     def __init__(self):
         self._settings = load_settings()
         self._folder = Path(self._settings.get("folder", DEFAULT_REC_DIR))
-        self._folder.mkdir(parents=True, exist_ok=True)
+        try:
+            self._folder.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            # «Документы» недоступны (сетевая папка, защита от программ-вымогателей и т.п.) — пишем в профиль
+            self._folder = LOG_DIR / "Recordings"
+            self._folder.mkdir(parents=True, exist_ok=True)
         self._rec = core.Recorder()
         self._player = core.Player()
         self._devices = core.list_input_devices()
@@ -123,6 +135,7 @@ class Api:
         self._preview = False
         self._monitor = False
         self._window = None
+        self._ui_ready = threading.Event()
         self._lock = threading.RLock()
 
     # ---------- служебное
@@ -158,6 +171,7 @@ class Api:
 
     # ---------- начальное состояние и настройки
     def init(self):
+        self._ui_ready.set()
         return {
             "devices": list(self._devices),
             "device": self._device_name(),
@@ -463,8 +477,82 @@ def activate_running_copy():
     return True
 
 
+def message_box(text, flags=0x40):
+    """Обычное окно сообщения Windows (работает, даже если интерфейс не загрузился)."""
+    return ctypes.windll.user32.MessageBoxW(None, text, TITLE, flags | 0x10000)  # MB_SETFOREGROUND
+
+
+def write_log(text):
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        path = LOG_DIR / "error.log"
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(f"=== {datetime.now():%Y-%m-%d %H:%M:%S} ===\n{text}\n")
+        return path
+    except OSError:
+        return None
+
+
+def report_error(details):
+    path = write_log(details)
+    summary = details.strip().splitlines()[-1] if details.strip() else "неизвестная ошибка"
+    where = f"\n\nПодробности сохранены в файл:\n{path}" if path else ""
+    message_box(f"PomanRecorder не смог запуститься.\n\n{summary}{where}", 0x10)  # MB_ICONERROR
+
+
+def webview2_installed():
+    """Есть ли на компьютере Microsoft Edge WebView2 — движок, которым рисуется окно программы."""
+    folder = os.environ.get("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER")
+    if folder:
+        return Path(folder).exists()
+    key = r"Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+    for root, path in ((winreg.HKEY_LOCAL_MACHINE, "SOFTWARE\\WOW6432Node\\" + key),
+                       (winreg.HKEY_LOCAL_MACHINE, "SOFTWARE\\" + key),
+                       (winreg.HKEY_CURRENT_USER, "Software\\" + key)):
+        try:
+            with winreg.OpenKey(root, path) as k:
+                version = winreg.QueryValueEx(k, "pv")[0]
+                if version and version != "0.0.0.0":
+                    return True
+        except OSError:
+            pass
+    return False
+
+
+def offer_webview2(reason):
+    answer = message_box(f"{reason}\n\nОткрыть страницу загрузки Microsoft? Установите компонент "
+                         "(это бесплатно, около минуты), затем запустите PomanRecorder снова.", 0x4 | 0x30)
+    if answer == 6:  # «Да»
+        os.startfile(WEBVIEW2_URL)
+
+
+def watch_ui(window, api):
+    """Если интерфейс так и не загрузился — объясняем, что делать, вместо пустого окна."""
+    if api._ui_ready.wait(UI_TIMEOUT):
+        return
+    write_log(f"Интерфейс не загрузился за {UI_TIMEOUT} с. WebView2 в реестре: {webview2_installed()}")
+    offer_webview2("Окно программы не смогло загрузить интерфейс.\n\nЧаще всего так бывает, когда на компьютере "
+                   "нет компонента Microsoft Edge WebView2 или он повреждён.")
+    window.destroy()
+
+
 def main():
+    try:
+        run()
+    except Exception:
+        report_error(traceback.format_exc())
+
+
+def run():
+    if STARTUP_ERROR:
+        report_error(STARTUP_ERROR)
+        return
     if activate_running_copy():
+        return
+    if not webview2_installed():
+        write_log("Не найден Microsoft Edge WebView2")
+        offer_webview2("Для работы PomanRecorder нужен бесплатный компонент Microsoft Edge WebView2, "
+                       "а на этом компьютере его нет.")
         return
     try:
         ctypes.windll.shcore.SetProcessDpiAwareness(2)
@@ -480,7 +568,7 @@ def main():
     )
     api._window = window
     window.events.closing += api._shutdown
-    webview.start(debug="--debug" in sys.argv)
+    webview.start(watch_ui, (window, api), debug="--debug" in sys.argv)
 
 
 if __name__ == "__main__":

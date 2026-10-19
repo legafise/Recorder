@@ -77,7 +77,7 @@ begin
 end;
 
 { Окно программы рисуется движком Microsoft Edge WebView2. В Windows 11 он есть всегда,
-  в Windows 10 почти всегда — но если нет, предложим скачать. }
+  в Windows 10 обычно тоже, но не везде. Если его нет, скачиваем официальный установщик Microsoft и ставим сами. }
 function WebView2Installed: Boolean;
 begin
   Result := HasWebView2Key(HKLM, 'SOFTWARE\WOW6432Node\' + WebView2Key) or
@@ -85,13 +85,74 @@ begin
             HasWebView2Key(HKCU, 'Software\' + WebView2Key);
 end;
 
+const
+  WebView2Url = 'https://go.microsoft.com/fwlink/p/?LinkId=2124703';
+  WebView2File = 'MicrosoftEdgeWebview2Setup.exe';
+
+var
+  DownloadPage: TDownloadWizardPage;
+  WebView2Tried, WebView2Failed: Boolean;
+
+{ Ключ /FORCEWEBVIEW2 — чтобы проверить установку WebView2 на компьютере, где он уже есть }
+function NeedWebView2: Boolean;
+begin
+  Result := (Pos('/FORCEWEBVIEW2', Uppercase(GetCmdTail)) > 0) or not WebView2Installed;
+end;
+
+procedure InitializeWizard;
+begin
+  DownloadPage := CreateDownloadPage('Установка Microsoft Edge WebView2',
+    'Программе нужен этот бесплатный компонент Microsoft. Он скачивается и ставится автоматически.', nil);
+end;
+
+function InstallWebView2(ShowPage: Boolean): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := False;
+  WebView2Tried := True;
+  try
+    if ShowPage then begin
+      DownloadPage.Clear;
+      DownloadPage.Add(WebView2Url, WebView2File, '');
+      DownloadPage.Show;
+      DownloadPage.Download;
+      DownloadPage.SetText('Устанавливаю Microsoft Edge WebView2…', 'Это займёт около минуты.');
+    end else
+      DownloadTemporaryFile(WebView2Url, WebView2File, '', nil);
+    Exec(ExpandConstant('{tmp}\') + WebView2File, '/silent /install', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Log(Format('WebView2 setup exit code: %d', [ResultCode]));
+    Result := WebView2Installed;
+  except
+    Log('WebView2 install failed: ' + GetExceptionMessage);
+  end;
+  if ShowPage then
+    DownloadPage.Hide;
+end;
+
+{ Обычная установка: страница задач — последняя перед копированием файлов }
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if (CurPageID = wpSelectTasks) and (not WebView2Tried) and NeedWebView2 then
+    WebView2Failed := not InstallWebView2(not WizardSilent);
+end;
+
+{ Запасной путь, если страницу задач пропустили (например, в тихой установке) }
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if (not WebView2Tried) and NeedWebView2 then
+    WebView2Failed := not InstallWebView2(False);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ErrorCode: Integer;
 begin
-  if (CurStep = ssPostInstall) and (not WizardSilent) and (not WebView2Installed) then
-    if MsgBox('Для работы программы нужен бесплатный компонент Microsoft Edge WebView2, а на этом компьютере его нет.' + #13#10#13#10 +
-              'Открыть страницу загрузки Microsoft? Установите его, и программа заработает.',
+  if (CurStep = ssPostInstall) and WebView2Failed and (not WizardSilent) then
+    if MsgBox('Не удалось автоматически установить компонент Microsoft Edge WebView2 (возможно, нет интернета).' + #13#10#13#10 +
+              'Без него окно программы будет пустым. Открыть страницу загрузки Microsoft, чтобы установить его вручную?',
               mbConfirmation, MB_YESNO) = IDYES then
-      ShellExec('open', 'https://go.microsoft.com/fwlink/p/?LinkId=2124703', '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
+      ShellExec('open', WebView2Url, '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
 end;
